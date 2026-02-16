@@ -1,8 +1,7 @@
-const CACHE_NAME = "recoil-island-v2"; // Cambia versione per forzare l'update
+const CACHE_NAME = "recoil-island";
 
-// Lista dei file da cachare
 const urlsToCache = [
-    ".", // La directory corrente (index)
+    ".",
     "index.html",
     "assets/css/main.css",
     "assets/js/main.js",
@@ -48,11 +47,8 @@ const urlsToCache = [
 ];
 
 self.addEventListener("install", (event) => {
-    console.log("[SW] Installing...");
     event.waitUntil(
         caches.open(CACHE_NAME).then(async (cache) => {
-            console.log("[SW] Cache opened:", CACHE_NAME);
-
             let successCount = 0;
             let failCount = 0;
 
@@ -60,31 +56,22 @@ self.addEventListener("install", (event) => {
                 try {
                     await cache.add(url);
                     successCount++;
-                    console.log(`[SW] ✅ Cached: ${url}`);
                 } catch (err) {
                     failCount++;
-                    console.error(`[SW] ❌ Failed to cache: ${url}`, err);
                 }
             }
-
-            console.log(
-                `[SW] Cache complete: ${successCount} success, ${failCount} failed`,
-            );
         }),
     );
     self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-    console.log("[SW] Activating...");
     event.waitUntil(
         caches.keys().then((keys) => {
-            console.log("[SW] Existing caches:", keys);
             return Promise.all(
                 keys
                     .filter((k) => k !== CACHE_NAME)
                     .map((k) => {
-                        console.log("[SW] Deleting old cache:", k);
                         return caches.delete(k);
                     }),
             );
@@ -97,11 +84,9 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
         caches.match(event.request).then((response) => {
             if (response) {
-                console.log("[SW] Serving from cache:", event.request.url);
                 return response;
             }
 
-            console.log("[SW] Fetching from network:", event.request.url);
             return fetch(event.request)
                 .then((response) => {
                     if (
@@ -117,7 +102,6 @@ self.addEventListener("fetch", (event) => {
                     return response;
                 })
                 .catch((err) => {
-                    console.error("[SW] Fetch failed:", event.request.url, err);
                     if (event.request.mode === "navigate") {
                         return caches.match("index.html");
                     }
