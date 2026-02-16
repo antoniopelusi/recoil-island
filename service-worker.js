@@ -1,7 +1,8 @@
-const CACHE_NAME = "recoil-island";
+const CACHE_NAME = "recoil-island-v2"; // Cambia versione per forzare l'update
 
+// Lista dei file da cachare
 const urlsToCache = [
-    "/",
+    ".", // La directory corrente (index)
     "index.html",
     "assets/css/main.css",
     "assets/js/main.js",
@@ -47,18 +48,27 @@ const urlsToCache = [
 ];
 
 self.addEventListener("install", (event) => {
+    console.log("[SW] Installing...");
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            const fullUrls = urlsToCache.map((url) => {
-                return new Request(url, { cache: "reload" });
-            });
+        caches.open(CACHE_NAME).then(async (cache) => {
+            console.log("[SW] Cache opened:", CACHE_NAME);
 
-            return Promise.all(
-                fullUrls.map((request) => {
-                    return cache.add(request).catch((err) => {
-                        console.error("Failed to cache:", request.url, err);
-                    });
-                }),
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const url of urlsToCache) {
+                try {
+                    await cache.add(url);
+                    successCount++;
+                    console.log(`[SW] ✅ Cached: ${url}`);
+                } catch (err) {
+                    failCount++;
+                    console.error(`[SW] ❌ Failed to cache: ${url}`, err);
+                }
+            }
+
+            console.log(
+                `[SW] Cache complete: ${successCount} success, ${failCount} failed`,
             );
         }),
     );
@@ -66,32 +76,39 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
+    console.log("[SW] Activating...");
     event.waitUntil(
-        caches
-            .keys()
-            .then((keys) =>
-                Promise.all(
-                    keys
-                        .filter((k) => k !== CACHE_NAME)
-                        .map((k) => caches.delete(k)),
-                ),
-            ),
+        caches.keys().then((keys) => {
+            console.log("[SW] Existing caches:", keys);
+            return Promise.all(
+                keys
+                    .filter((k) => k !== CACHE_NAME)
+                    .map((k) => {
+                        console.log("[SW] Deleting old cache:", k);
+                        return caches.delete(k);
+                    }),
+            );
+        }),
     );
     self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
-    if (event.request.method !== "GET") return;
-
     event.respondWith(
         caches.match(event.request).then((response) => {
             if (response) {
+                console.log("[SW] Serving from cache:", event.request.url);
                 return response;
             }
 
+            console.log("[SW] Fetching from network:", event.request.url);
             return fetch(event.request)
                 .then((response) => {
-                    if (response && response.status === 200) {
+                    if (
+                        response &&
+                        response.status === 200 &&
+                        event.request.method === "GET"
+                    ) {
                         const responseToCache = response.clone();
                         caches.open(CACHE_NAME).then((cache) => {
                             cache.put(event.request, responseToCache);
@@ -99,7 +116,8 @@ self.addEventListener("fetch", (event) => {
                     }
                     return response;
                 })
-                .catch(() => {
+                .catch((err) => {
+                    console.error("[SW] Fetch failed:", event.request.url, err);
                     if (event.request.mode === "navigate") {
                         return caches.match("index.html");
                     }
