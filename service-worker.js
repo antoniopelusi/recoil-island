@@ -36,6 +36,13 @@ const urlsToCache = [
     "assets/maps/map7.json",
     "assets/maps/map8.json",
     "assets/maps/map9.json",
+    "assets/icons/apple-touch-icon.png",
+    "assets/icons/favicon.ico",
+    "assets/icons/favicon.svg",
+    "assets/icons/favicon-96x96.svg",
+    "assets/icons/site.webmanifest",
+    "assets/icons/web-app-manifest-192x192.png",
+    "assets/icons/web-app-manifest-512x512.png",
 ];
 
 self.addEventListener("install", (event) => {
